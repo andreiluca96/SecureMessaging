@@ -1,10 +1,12 @@
 package com.example.andrluc.securemessaging;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -36,6 +38,13 @@ public class MainActivity extends AppCompatActivity {
         ConversationItemAdapter conversationItemAdapter = new ConversationItemAdapter();
         conversationListView.setAdapter(conversationItemAdapter);
 
+        conversationListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
+                startActivity(intent);
+            }
+        });
     }
 
     class ConversationItemAdapter extends BaseAdapter {
