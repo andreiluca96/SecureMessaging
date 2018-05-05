@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -37,6 +38,8 @@ public class MainActivity extends AppCompatActivity {
         ListView conversationListView = findViewById(R.id.conversationListView);
         ConversationItemAdapter conversationItemAdapter = new ConversationItemAdapter();
         conversationListView.setAdapter(conversationItemAdapter);
+
+
 
         conversationListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
