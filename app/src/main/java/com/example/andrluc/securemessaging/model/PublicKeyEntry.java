@@ -4,10 +4,6 @@ import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBAttribut
 import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBHashKey;
 import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBTable;
 
-/**
- * Created by Luca Andrei on 5/13/2018.
- */
-
 @DynamoDBTable(tableName = "SecureMessaging-PublicKeysTable")
 public class PublicKeyEntry {
     @DynamoDBHashKey(attributeName = "publicKey")

@@ -6,10 +6,6 @@ import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.example.andrluc.securemessaging.BuildConfig;
 
-/**
- * Created by Luca Andrei on 5/13/2018.
- */
-
 public class DynamoDBUtil {
     private static DynamoDBMapper dynamoDBMapper;
 
