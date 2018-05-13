@@ -1,5 +1,24 @@
 apply plugin: 'com.android.application'
 
+def getAccessKey() {
+    Properties properties = new Properties()
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+    return properties.getProperty("aws.access.key");
+}
+
+def getSecretKey() {
+    Properties properties = new Properties()
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+    return properties.getProperty("aws.secret.key");
+}
+
+android {
+    defaultConfig {
+        buildConfigField "String", "ACCESS_KEY", "\""+getAccessKey()+"\""
+        buildConfigField "String", "SECRET_KEY", "\""+getSecretKey()+"\""
+    }
+}
+
 android {
     compileSdkVersion 26
     defaultConfig {

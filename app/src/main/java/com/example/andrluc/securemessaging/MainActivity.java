@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
@@ -16,10 +15,14 @@ import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.mobile.client.AWSMobileClient;
 import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
+import com.example.andrluc.securemessaging.model.PublicKeyEntry;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -27,6 +30,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -38,7 +42,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        AmazonDynamoDBClient dynamoDBClient = new AmazonDynamoDBClient(AWSMobileClient.getInstance().getCredentialsProvider());
+        BasicAWSCredentials awsCreds = new BasicAWSCredentials(BuildConfig.ACCESS_KEY, BuildConfig.SECRET_KEY);
+        AmazonDynamoDBClient dynamoDBClient = new AmazonDynamoDBClient(awsCreds);
         this.dynamoDBMapper = DynamoDBMapper.builder()
                 .dynamoDBClient(dynamoDBClient)
                 .awsConfiguration(AWSMobileClient.getInstance().getConfiguration())
@@ -68,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
 
 
         SharedPreferences wmbPreference = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean isFirstRun = wmbPreference.getBoolean("firstRun", true);
+        boolean isFirstRun = wmbPreference.getBoolean("firstTime", true);
         if (isFirstRun)
         {
             WifiManager manager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -82,8 +87,19 @@ public class MainActivity extends AppCompatActivity {
                 RSAPublicKey publicKey = (RSAPublicKey)kp.getPublic();
                 String publicKeyString = publicKey.getModulus().toString() + "|" + publicKey.getPublicExponent().toString();
 
+                final PublicKeyEntry publicKeyEntry = new PublicKeyEntry();
+                publicKeyEntry.setMacAddress(address);
+                publicKeyEntry.setPublicKey(publicKeyString);
+
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        dynamoDBMapper.save(publicKeyEntry);
+                    }
+                }).start();
+
                 SharedPreferences.Editor editor = wmbPreference.edit();
-                editor.putBoolean("firstRun", false);
+                editor.putBoolean("firstTime", false);
                 RSAPrivateKey privateKey = (RSAPrivateKey)kp.getPrivate();
                 editor.putString("privateKey", privateKey.getModulus().toString() + "|" + privateKey.getPrivateExponent().toString());
                 editor.apply();
