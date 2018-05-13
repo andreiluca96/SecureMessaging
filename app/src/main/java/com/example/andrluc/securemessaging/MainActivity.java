@@ -15,14 +15,9 @@ import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.mobile.client.AWSMobileClient;
-import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBMapper;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.example.andrluc.securemessaging.model.PublicKeyEntry;
+import com.example.andrluc.securemessaging.utils.DynamoDBUtil;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -30,24 +25,16 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 public class MainActivity extends AppCompatActivity {
 
     private List<String> users = new ArrayList<>();
-    private DynamoDBMapper dynamoDBMapper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        BasicAWSCredentials awsCreds = new BasicAWSCredentials(BuildConfig.ACCESS_KEY, BuildConfig.SECRET_KEY);
-        AmazonDynamoDBClient dynamoDBClient = new AmazonDynamoDBClient(awsCreds);
-        this.dynamoDBMapper = DynamoDBMapper.builder()
-                .dynamoDBClient(dynamoDBClient)
-                .awsConfiguration(AWSMobileClient.getInstance().getConfiguration())
-                .build();
 
         users.add("user1");
         users.add("user2");
@@ -94,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        dynamoDBMapper.save(publicKeyEntry);
+                        DynamoDBUtil.getDynamoDBMapper().save(publicKeyEntry);
                     }
                 }).start();
 
