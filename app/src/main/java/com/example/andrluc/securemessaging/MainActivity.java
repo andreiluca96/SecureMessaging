@@ -1,16 +1,23 @@
 package com.example.andrluc.securemessaging;
 
 import android.annotation.SuppressLint;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.wifi.WifiManager;
+import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pDeviceList;
+import android.net.wifi.p2p.WifiP2pManager;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -25,6 +32,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -35,16 +43,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
 
-        users.add("user1");
-        users.add("user2");
-        users.add("user3");
-        users.add("user4");
-        users.add("user5");
-        users.add("user6");
-        users.add("user7");
-        users.add("user8");
-        users.add("user9");
+        for(BluetoothDevice bt : pairedDevices)
+            users.add(bt.getName());
 
         ListView conversationListView = findViewById(R.id.conversationListView);
         ConversationItemAdapter conversationItemAdapter = new ConversationItemAdapter();
