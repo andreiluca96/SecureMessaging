@@ -3,21 +3,14 @@ package com.example.andrluc.securemessaging;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.wifi.WifiManager;
-import android.net.wifi.p2p.WifiP2pDevice;
-import android.net.wifi.p2p.WifiP2pDeviceList;
-import android.net.wifi.p2p.WifiP2pManager;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -46,8 +39,9 @@ public class MainActivity extends AppCompatActivity {
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
 
-        for(BluetoothDevice bt : pairedDevices)
+        for (BluetoothDevice bt : pairedDevices) {
             users.add(bt.getName());
+        }
 
         ListView conversationListView = findViewById(R.id.conversationListView);
         ConversationItemAdapter conversationItemAdapter = new ConversationItemAdapter();
@@ -62,6 +56,10 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
+        publishToDDBPublicKeyOnce(mBluetoothAdapter);
+    }
+
+    private void publishToDDBPublicKeyOnce(BluetoothAdapter mBluetoothAdapter) {
         SharedPreferences wmbPreference = PreferenceManager.getDefaultSharedPreferences(this);
         boolean isFirstRun = wmbPreference.getBoolean("firstGo", true);
         if (isFirstRun)
@@ -93,8 +91,6 @@ public class MainActivity extends AppCompatActivity {
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
             }
-
-
         }
     }
 
