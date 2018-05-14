@@ -63,12 +63,9 @@ public class MainActivity extends AppCompatActivity {
 
 
         SharedPreferences wmbPreference = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean isFirstRun = wmbPreference.getBoolean("firstTime", true);
+        boolean isFirstRun = wmbPreference.getBoolean("firstGo", true);
         if (isFirstRun)
         {
-            WifiManager manager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-            String address = manager.getConnectionInfo().getMacAddress();
-
             try {
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
                 kpg.initialize(2048);
@@ -78,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
                 String publicKeyString = publicKey.getModulus().toString() + "|" + publicKey.getPublicExponent().toString();
 
                 final PublicKeyEntry publicKeyEntry = new PublicKeyEntry();
-                publicKeyEntry.setMacAddress(address);
+                publicKeyEntry.setUsername(mBluetoothAdapter.getName());
                 publicKeyEntry.setPublicKey(publicKeyString);
 
                 new Thread(new Runnable() {
@@ -89,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
                 }).start();
 
                 SharedPreferences.Editor editor = wmbPreference.edit();
-                editor.putBoolean("firstTime", false);
+                editor.putBoolean("firstGo", false);
                 RSAPrivateKey privateKey = (RSAPrivateKey)kp.getPrivate();
                 editor.putString("privateKey", privateKey.getModulus().toString() + "|" + privateKey.getPrivateExponent().toString());
                 editor.apply();
