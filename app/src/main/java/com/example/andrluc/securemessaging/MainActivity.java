@@ -18,6 +18,10 @@ import android.widget.TextView;
 import com.example.andrluc.securemessaging.model.PublicKeyEntry;
 import com.example.andrluc.securemessaging.utils.DynamoDBUtil;
 
+import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -25,10 +29,10 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static final String SUBNET_MASK = "192.168.1";
     private List<String> users = new ArrayList<>();
 
     @Override
@@ -36,12 +40,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-
-        for (BluetoothDevice bt : pairedDevices) {
-            users.add(bt.getName());
-        }
+        users.addAll(checkHosts(SUBNET_MASK));
 
         ListView conversationListView = findViewById(R.id.conversationListView);
         ConversationItemAdapter conversationItemAdapter = new ConversationItemAdapter();
@@ -56,12 +55,12 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-        publishToDDBPublicKeyOnce(mBluetoothAdapter);
+        publishToDDBPublicKeyOnce();
     }
 
-    private void publishToDDBPublicKeyOnce(BluetoothAdapter mBluetoothAdapter) {
+    private void publishToDDBPublicKeyOnce() {
         SharedPreferences wmbPreference = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean isFirstRun = wmbPreference.getBoolean("firstGo", true);
+        boolean isFirstRun = wmbPreference.getBoolean("firstTime1", true);
         if (isFirstRun)
         {
             try {
@@ -70,15 +69,24 @@ public class MainActivity extends AppCompatActivity {
                 KeyPair kp = kpg.generateKeyPair();
 
                 RSAPublicKey publicKey = (RSAPublicKey)kp.getPublic();
-                String publicKeyString = publicKey.getModulus().toString() + "|" + publicKey.getPublicExponent().toString();
+                final String publicKeyString = publicKey.getModulus().toString() + "|" + publicKey.getPublicExponent().toString();
 
-                final PublicKeyEntry publicKeyEntry = new PublicKeyEntry();
-                publicKeyEntry.setUsername(mBluetoothAdapter.getName());
-                publicKeyEntry.setPublicKey(publicKeyString);
+
 
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
+                        final PublicKeyEntry publicKeyEntry = new PublicKeyEntry();
+
+                        try {
+                            publicKeyEntry.setUsername(Inet4Address.getLocalHost().getHostAddress());
+                        } catch (UnknownHostException e) {
+                            e.printStackTrace();
+                        }
+
+                        publicKeyEntry.setPublicKey(publicKeyString);
+
+
                         DynamoDBUtil.getDynamoDBMapper().save(publicKeyEntry);
                     }
                 }).start();
@@ -92,6 +100,40 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
+    }
+
+    public List<String> checkHosts(final String subnet){
+        final List<String> hosts = new ArrayList<>();
+
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                int timeout = 50;
+                for (int i = 1; i < 255; i++) {
+                    String host = subnet + "." + i;
+                    try {
+                        System.out.println(i);
+
+                        if (InetAddress.getByName(host).isReachable(timeout)) {
+                            hosts.add(host);
+                            System.out.println("Found" + host);
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+            }
+        });
+
+        thread.start();
+        try {
+            thread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        return hosts;
     }
 
     class ConversationItemAdapter extends BaseAdapter {
