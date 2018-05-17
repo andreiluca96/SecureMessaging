@@ -1,8 +1,6 @@
 package com.example.andrluc.securemessaging;
 
 import android.annotation.SuppressLint;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
@@ -54,13 +52,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
         publishToDDBPublicKeyOnce();
     }
 
     private void publishToDDBPublicKeyOnce() {
         SharedPreferences wmbPreference = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean isFirstRun = wmbPreference.getBoolean("firstTime1", true);
+        boolean isFirstRun = wmbPreference.getBoolean("firstGo", true);
         if (isFirstRun)
         {
             try {
