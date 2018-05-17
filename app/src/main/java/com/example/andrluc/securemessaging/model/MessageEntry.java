@@ -39,4 +39,14 @@ public class MessageEntry {
     public void setDate(Date date) {
         this.date = date;
     }
+
+    @Override
+    public String toString() {
+        return "MessageEntry{" +
+                "message='" + message + '\'' +
+                ", sender='" + sender + '\'' +
+                ", receiver='" + receiver + '\'' +
+                ", date=" + date +
+                '}';
+    }
 }

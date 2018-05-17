@@ -8,13 +8,26 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.example.andrluc.securemessaging.model.MessageEntry;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class ConversationActivity extends AppCompatActivity {
+    private final int CONVERSATION_PORT = 12345;
+
+    private String receiverIPAddress = "127.0.0.1";
+    private String senderIPAddress = "127.0.0.1";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +60,33 @@ public class ConversationActivity extends AppCompatActivity {
         MessageListAdapter messageListAdapter = new MessageListAdapter(this, messages);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(messageListAdapter);
+    }
+
+    public void sendMessage(View view) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                MessageEntry messageEntry = new MessageEntry();
+                String message = ((EditText)findViewById(R.id.edittext_chatbox)).getText().toString();
+
+                messageEntry.setSender(senderIPAddress);
+                messageEntry.setReceiver(receiverIPAddress);
+                messageEntry.setDate(new Date());
+                messageEntry.setMessage(message);
+
+                try {
+                    Socket socket = new Socket(receiverIPAddress, CONVERSATION_PORT);
+                    OutputStream outputStream = socket.getOutputStream();
+
+                    PrintWriter writer = new PrintWriter(outputStream, true);
+
+                    writer.println(new ObjectMapper().writeValueAsString(messageEntry));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }).start();
     }
 
     public class MessageListAdapter extends RecyclerView.Adapter {

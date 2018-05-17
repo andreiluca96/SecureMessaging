@@ -13,12 +13,19 @@ import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.example.andrluc.securemessaging.model.MessageEntry;
 import com.example.andrluc.securemessaging.model.PublicKeyEntry;
 import com.example.andrluc.securemessaging.utils.DynamoDBUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -29,9 +36,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-
+    private final int CONVERSATION_PORT = 12345;
     public static final String SUBNET_MASK = "192.168.1";
-    private List<String> users = new ArrayList<>();
+
+    private final List<String> users = new ArrayList<>();
+    private final List<MessageEntry> messageEntries = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +60,24 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try (ServerSocket serverSocket = new ServerSocket(CONVERSATION_PORT)) {
+                    while (true) {
+                        Socket clientSocket = serverSocket.accept();
+                        BufferedReader in = new BufferedReader(
+                                new InputStreamReader(clientSocket.getInputStream()));
+                        MessageEntry messageEntry = new ObjectMapper().readValue(in.readLine(), MessageEntry.class);
+
+                        System.out.println(messageEntry);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();;
 
         publishToDDBPublicKeyOnce();
     }
