@@ -57,17 +57,14 @@ public class ConversationUtil {
 
     public static void startConversationWriter(final AppCompatActivity context) {
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-        scheduler.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                SharedPreferences sharedPref = context.getPreferences(Context.MODE_PRIVATE);
-                SharedPreferences.Editor editor = sharedPref.edit();
-                try {
-                    editor.putString(CONVERSATION_HISTORY_SHARED_PREFERENCES_KEY, new ObjectMapper().writeValueAsString(CONVERSATION_HISTORY));
-                    editor.apply();
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
+        scheduler.scheduleAtFixedRate(() -> {
+            SharedPreferences sharedPref = context.getPreferences(Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPref.edit();
+            try {
+                editor.putString(CONVERSATION_HISTORY_SHARED_PREFERENCES_KEY, new ObjectMapper().writeValueAsString(CONVERSATION_HISTORY));
+                editor.apply();
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
             }
         }, 1, 1, TimeUnit.MINUTES);
     }

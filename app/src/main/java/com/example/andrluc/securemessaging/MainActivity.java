@@ -66,6 +66,25 @@ public class MainActivity extends AppCompatActivity {
         int ipAddress = connectionInfo.getIpAddress();
         this.ipAddress = Formatter.formatIpAddress(ipAddress);
 
+        buildContactList();
+
+        ListView conversationListView = findViewById(R.id.conversationListView);
+        ConversationItemAdapter conversationItemAdapter = new ConversationItemAdapter();
+        conversationListView.setAdapter(conversationItemAdapter);
+
+        conversationListView.setOnItemClickListener((adapterView, view, i, l) -> {
+            Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
+            intent.putExtra("HOST", contactsLists.get(i).getHostName());
+            intent.putExtra("SELF", this.ipAddress);
+
+            startActivity(intent);
+        });
+
+        publishToDDBPublicKeyOnce();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private void buildContactList() {
         for (String user : users) {
             ContactItem contactItem = new ContactItem();
             contactItem.setHostName(user);
@@ -106,17 +125,6 @@ public class MainActivity extends AppCompatActivity {
 
             contactsLists.add(contactItem);
         }
-
-        ListView conversationListView = findViewById(R.id.conversationListView);
-        ConversationItemAdapter conversationItemAdapter = new ConversationItemAdapter();
-        conversationListView.setAdapter(conversationItemAdapter);
-
-        conversationListView.setOnItemClickListener((adapterView, view, i, l) -> {
-            Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
-            startActivity(intent);
-        });
-
-        publishToDDBPublicKeyOnce();
     }
 
     private void publishToDDBPublicKeyOnce() {
