@@ -13,8 +13,8 @@ import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.example.andrluc.securemessaging.model.MessageEntry;
 import com.example.andrluc.securemessaging.model.PublicKeyEntry;
+import com.example.andrluc.securemessaging.utils.ConversationUtil;
 import com.example.andrluc.securemessaging.utils.DynamoDBUtil;
 
 import java.io.IOException;
@@ -33,12 +33,15 @@ public class MainActivity extends AppCompatActivity {
     public static final String SUBNET_MASK = "192.168.1";
 
     private final List<String> users = new ArrayList<>();
-    private final List<MessageEntry> messageEntries = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        ConversationUtil.loadConversationFromFile(this);
+
+        ConversationUtil.startConversationWriter(this);
 
         users.addAll(checkHosts(SUBNET_MASK));
 
@@ -107,7 +110,7 @@ public class MainActivity extends AppCompatActivity {
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                int timeout = 50;
+                int timeout = 10;
                 for (int i = 1; i < 255; i++) {
                     String host = subnet + "." + i;
                     try {
