@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 public class ConversationUtil {
     private static final int CONVERSATION_PORT = 12345;
     private static final ConversationHistory CONVERSATION_HISTORY;
-    public static final String CONVERSATION_HISTORY_SHARED_PREFERENCES_KEY = "ConversationHistory";
+    private static final String CONVERSATION_HISTORY_SHARED_PREFERENCES_KEY = "ConversationHistory";
 
     private ConversationUtil() {}
 
@@ -49,6 +49,10 @@ public class ConversationUtil {
                 }
             }
         }).start();
+    }
+
+    public static ConversationHistory getConversationHistory() {
+        return CONVERSATION_HISTORY;
     }
 
     public static void startConversationWriter(final AppCompatActivity context) {

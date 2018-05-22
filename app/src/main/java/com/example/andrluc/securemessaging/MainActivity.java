@@ -1,11 +1,19 @@
 package com.example.andrluc.securemessaging;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.preference.PreferenceManager;
+import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.format.Formatter;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -13,6 +21,8 @@ import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.example.andrluc.securemessaging.model.ContactItem;
+import com.example.andrluc.securemessaging.model.MessageEntry;
 import com.example.andrluc.securemessaging.model.PublicKeyEntry;
 import com.example.andrluc.securemessaging.utils.ConversationUtil;
 import com.example.andrluc.securemessaging.utils.DynamoDBUtil;
@@ -28,12 +38,16 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
     public static final String SUBNET_MASK = "192.168.1";
 
     private final List<String> users = new ArrayList<>();
+    private final List<ContactItem> contactsLists = new ArrayList<>();
+    private String ipAddress;
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,16 +59,61 @@ public class MainActivity extends AppCompatActivity {
 
         users.addAll(checkHosts(SUBNET_MASK));
 
+        WifiManager wm = (WifiManager)this.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        assert wm != null;
+        WifiInfo connectionInfo = wm.getConnectionInfo();
+
+        int ipAddress = connectionInfo.getIpAddress();
+        this.ipAddress = Formatter.formatIpAddress(ipAddress);
+
+        for (String user : users) {
+            ContactItem contactItem = new ContactItem();
+            contactItem.setHostName(user);
+
+            List<MessageEntry> filteredEntries = ConversationUtil.getConversationHistory()
+                    .getMessageEntries()
+                    .stream()
+                    .filter(messageEntry -> messageEntry.getSender().equals(user) || messageEntry.getReceiver().equals(user))
+                    .collect(Collectors.toList());
+
+            filteredEntries.sort((messageEntry, t1) -> {
+                if (messageEntry.getDate().equals(t1.getDate())) {
+                    return 0;
+                }
+
+                if (messageEntry.getDate().before(t1.getDate())) {
+                    return 1;
+                } else {
+                    return -1;
+                }
+            });
+
+            if (filteredEntries.size() > 0) {
+                MessageEntry messageEntry = filteredEntries.get(0);
+                contactItem.setTimestamp(messageEntry.getDate());
+
+                String message;
+
+                if (messageEntry.getSender().equals(this.ipAddress)) {
+                    message = "You: " + messageEntry.getMessage();
+                } else {
+                    message = user + ": " + messageEntry.getMessage();
+                }
+                contactItem.setMessage(message);
+            } else {
+                contactItem.setMessage("No messages yet.");
+            }
+
+            contactsLists.add(contactItem);
+        }
+
         ListView conversationListView = findViewById(R.id.conversationListView);
         ConversationItemAdapter conversationItemAdapter = new ConversationItemAdapter();
         conversationListView.setAdapter(conversationItemAdapter);
 
-        conversationListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
-                startActivity(intent);
-            }
+        conversationListView.setOnItemClickListener((adapterView, view, i, l) -> {
+            Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
+            startActivity(intent);
         });
 
         publishToDDBPublicKeyOnce();
@@ -75,22 +134,19 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        final PublicKeyEntry publicKeyEntry = new PublicKeyEntry();
+                new Thread(() -> {
+                    final PublicKeyEntry publicKeyEntry = new PublicKeyEntry();
 
-                        try {
-                            publicKeyEntry.setUsername(Inet4Address.getLocalHost().getHostAddress());
-                        } catch (UnknownHostException e) {
-                            e.printStackTrace();
-                        }
-
-                        publicKeyEntry.setPublicKey(publicKeyString);
-
-
-                        DynamoDBUtil.getDynamoDBMapper().save(publicKeyEntry);
+                    try {
+                        publicKeyEntry.setUsername(Inet4Address.getLocalHost().getHostAddress());
+                    } catch (UnknownHostException e) {
+                        e.printStackTrace();
                     }
+
+                    publicKeyEntry.setPublicKey(publicKeyString);
+
+
+                    DynamoDBUtil.getDynamoDBMapper().save(publicKeyEntry);
                 }).start();
 
                 SharedPreferences.Editor editor = wmbPreference.edit();
@@ -107,25 +163,22 @@ public class MainActivity extends AppCompatActivity {
     public List<String> checkHosts(final String subnet){
         final List<String> hosts = new ArrayList<>();
 
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                int timeout = 10;
-                for (int i = 1; i < 255; i++) {
-                    String host = subnet + "." + i;
-                    try {
-                        System.out.println(i);
+        Thread thread = new Thread(() -> {
+            int timeout = 10;
+            for (int i = 1; i < 255; i++) {
+                String host = subnet + "." + i;
+                try {
+                    System.out.println(i);
 
-                        if (InetAddress.getByName(host).isReachable(timeout)) {
-                            hosts.add(host);
-                            System.out.println("Found" + host);
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    if (InetAddress.getByName(host).isReachable(timeout)) {
+                        hosts.add(host);
+                        System.out.println("Found" + host);
                     }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-
             }
+
         });
 
         thread.start();
@@ -142,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public int getCount() {
-            return users.size();
+            return contactsLists.size();
         }
 
         @Override
@@ -164,9 +217,9 @@ public class MainActivity extends AppCompatActivity {
             TextView lastMessageTextView = view.findViewById(R.id.lastMessageTextView);
             TextView lastMessageDateTextView = view.findViewById(R.id.lastMessageDateTextView);
 
-            usernameTextView.setText(users.get(i));
-            lastMessageTextView.setText(users.get(i));
-            lastMessageDateTextView.setText("some date");
+            usernameTextView.setText(contactsLists.get(i).getHostName());
+            lastMessageTextView.setText(contactsLists.get(i).getMessage());
+            lastMessageDateTextView.setText(contactsLists.get(i).getTimestamp() == null? "" : contactsLists.get(i).getTimestamp().toString());
 
             return view;
         }
