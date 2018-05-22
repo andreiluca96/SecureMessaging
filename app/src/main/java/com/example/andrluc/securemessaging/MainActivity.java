@@ -4,8 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -16,7 +14,6 @@ import android.os.Bundle;
 import android.text.format.Formatter;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -37,8 +34,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
     public static final String SUBNET_MASK = "192.168.1";
@@ -65,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
 
         int ipAddress = connectionInfo.getIpAddress();
         this.ipAddress = Formatter.formatIpAddress(ipAddress);
+        System.out.println("HostIP: " + this.ipAddress);
 
         buildContactList();
 
@@ -89,13 +87,17 @@ public class MainActivity extends AppCompatActivity {
             ContactItem contactItem = new ContactItem();
             contactItem.setHostName(user);
 
-            List<MessageEntry> filteredEntries = ConversationUtil.getConversationHistory()
-                    .getMessageEntries()
-                    .stream()
-                    .filter(messageEntry -> messageEntry.getSender().equals(user) || messageEntry.getReceiver().equals(user))
-                    .collect(Collectors.toList());
+            List<MessageEntry> filteredEntries = new ArrayList<>();
+            List<MessageEntry> messageEntries = ConversationUtil.getConversationHistory().getMessageEntries();
 
-            filteredEntries.sort((messageEntry, t1) -> {
+
+            for (MessageEntry messageEntry : messageEntries) {
+                if (messageEntry.getSender().equals(user) || messageEntry.getReceiver().equals(user)) {
+                    filteredEntries.add(messageEntry);
+                }
+            }
+
+            Collections.sort(filteredEntries, (messageEntry, t1) -> {
                 if (messageEntry.getDate().equals(t1.getDate())) {
                     return 0;
                 }

@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -47,33 +48,57 @@ public class ConversationActivity extends AppCompatActivity {
         RecyclerView recyclerView = findViewById(R.id.reyclerview_message_list);
         recyclerView.setHasFixedSize(true);
 
+        MessageListAdapter messageListAdapter = new MessageListAdapter(messages);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setAdapter(messageListAdapter);
+
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         scheduler.scheduleAtFixedRate(() -> {
-            messages = new ArrayList<>();
+            try {
+                messages = new ArrayList<>();
 
-            ConversationUtil.getConversationHistory()
-                    .getMessageEntries()
-                    .stream()
-                    .filter(messageEntry -> messageEntry.getSender().equals(hostIPAddress) || messageEntry.getSender().equals(hostIPAddress))
-                    .sorted((messageEntry, t1) -> {
-                        if (messageEntry.getDate().equals(t1.getDate())) {
-                            return 0;
-                        }
+                List<MessageEntry> messageEntries = ConversationUtil.getConversationHistory().getMessageEntries();
+                List<MessageEntry> filteredMessageEntries = new ArrayList<>();
 
-                        if (messageEntry.getDate().before(t1.getDate())) {
-                            return 1;
-                        } else {
-                            return -1;
-                        }
-                    })
-                    .forEach(messageEntry -> {
-                        Message message = new Message();
-                        message.setSender(messageEntry.getSender());
-                        message.setMessage(messageEntry.getMessage());
-                        message.setCreatedAt(messageEntry.getDate());
+                for (MessageEntry messageEntry : messageEntries) {
+                    if (messageEntry.getSender().equals(hostIPAddress) || messageEntry.getSender().equals(hostIPAddress)) {
+                        filteredMessageEntries.add(messageEntry);
+                    }
+                }
 
-                        messages.add(message);
-                    });
+                Collections.sort(filteredMessageEntries, (messageEntry, t1) -> {
+                            if (messageEntry.getDate().equals(t1.getDate())) {
+                                return 0;
+                            }
+
+                            if (messageEntry.getDate().before(t1.getDate())) {
+                                return -1;
+                            } else {
+                                return 1;
+                            }
+                        });
+
+                for (MessageEntry messageEntry : filteredMessageEntries) {
+                    Message message = new Message();
+                    message.setSender(messageEntry.getSender());
+                    message.setMessage(messageEntry.getMessage());
+                    message.setCreatedAt(messageEntry.getDate());
+
+                    messages.add(message);
+                }
+
+                MessageListAdapter messageListAdapter1 = new MessageListAdapter(messages);
+                System.out.println("Adaptam...");
+
+
+                runOnUiThread(() -> {
+                    recyclerView.swapAdapter(messageListAdapter1, false);
+                    recyclerView.smoothScrollToPosition(messages.size() - 1);
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
         }, 0, 10, TimeUnit.SECONDS);
 
         Message dummy = new Message();
@@ -90,20 +115,24 @@ public class ConversationActivity extends AppCompatActivity {
 
         messages.add(dummy2);
 
-        MessageListAdapter messageListAdapter = new MessageListAdapter(messages);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(messageListAdapter);
+        messageListAdapter = new MessageListAdapter(messages);
+        recyclerView.swapAdapter(messageListAdapter, false);
     }
 
     public void sendMessage(View view) {
         new Thread(() -> {
             MessageEntry messageEntry = new MessageEntry();
-            String message = ((EditText)findViewById(R.id.edittext_chatbox)).getText().toString();
+            EditText editText = findViewById(R.id.edittext_chatbox);
+            String message = editText.getText().toString();
+
+            runOnUiThread(() -> editText.setText(""));
 
             messageEntry.setSender(selfIPAddress);
             messageEntry.setReceiver(hostIPAddress);
             messageEntry.setDate(new Date());
             messageEntry.setMessage(message);
+
+            ConversationUtil.getConversationHistory().getMessageEntries().add(messageEntry);
 
             try {
                 Socket socket = new Socket(hostIPAddress, CONVERSATION_PORT);
@@ -182,6 +211,15 @@ public class ConversationActivity extends AppCompatActivity {
             super.onAttachedToRecyclerView(recyclerView);
         }
 
+        public void notify(List<Message> list) {
+            if (list != null) {
+                this.mMessageList.clear();
+                this.mMessageList.addAll(list);
+
+            }
+            notifyDataSetChanged();
+        }
+
         private class SentMessageHolder extends RecyclerView.ViewHolder {
             TextView messageText, timeText;
 
@@ -194,7 +232,7 @@ public class ConversationActivity extends AppCompatActivity {
 
             void bind(Message message) {
                 messageText.setText(message.getMessage());
-                timeText.setText("date");
+                timeText.setText(message.getCreatedAt().toString());
             }
         }
 

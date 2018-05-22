@@ -28,7 +28,7 @@ public class ConversationUtil {
 
     static {
         CONVERSATION_HISTORY = new ConversationHistory();
-        CONVERSATION_HISTORY.setMessageEntries(new ArrayList<MessageEntry>());
+        CONVERSATION_HISTORY.setMessageEntries(new ArrayList<>());
 
         new Thread(new Runnable() {
             @Override
@@ -40,7 +40,11 @@ public class ConversationUtil {
                                 new InputStreamReader(clientSocket.getInputStream()));
                         MessageEntry messageEntry = new ObjectMapper().readValue(in.readLine(), MessageEntry.class);
 
-                        CONVERSATION_HISTORY.getMessageEntries().add(messageEntry);
+                        if (!CONVERSATION_HISTORY.getMessageEntries().contains(messageEntry)) {
+                            CONVERSATION_HISTORY.getMessageEntries().add(messageEntry);
+                        } else {
+                            System.out.println("Avem deja");
+                        }
 
                         System.out.println(messageEntry);
                     }
@@ -71,16 +75,18 @@ public class ConversationUtil {
 
     public static void loadConversationFromFile(AppCompatActivity context) {
         SharedPreferences sharedPref = context.getPreferences(Context.MODE_PRIVATE);
+        ConversationHistory conversationHistory = null;
         try {
-            ConversationHistory conversationHistory = new ObjectMapper().readValue(sharedPref.getString(CONVERSATION_HISTORY_SHARED_PREFERENCES_KEY, null), ConversationHistory.class);
-
-            if (conversationHistory != null) {
-                if (CONVERSATION_HISTORY.getMessageEntries() != null) {
-                    CONVERSATION_HISTORY.setMessageEntries(conversationHistory.getMessageEntries());
-                }
-            }
-        } catch (IOException e) {
+            conversationHistory = new ObjectMapper().readValue(sharedPref.getString(CONVERSATION_HISTORY_SHARED_PREFERENCES_KEY, null), ConversationHistory.class);
+        } catch (Exception e) {
             e.printStackTrace();
         }
+
+        if (conversationHistory != null) {
+            if (conversationHistory.getMessageEntries() != null) {
+                CONVERSATION_HISTORY.setMessageEntries(conversationHistory.getMessageEntries());
+            }
+        }
+
     }
 }
