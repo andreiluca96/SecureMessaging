@@ -4,20 +4,38 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 
+import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBQueryExpression;
+import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.PaginatedQueryList;
 import com.example.andrluc.securemessaging.model.ConversationHistory;
 import com.example.andrluc.securemessaging.model.MessageEntry;
+import com.example.andrluc.securemessaging.model.MessageEntryDTO;
+import com.example.andrluc.securemessaging.model.PublicKeyEntry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.InvalidKeyException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPublicKeySpec;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 
 public class ConversationUtil {
     private static final int CONVERSATION_PORT = 12345;
@@ -29,28 +47,52 @@ public class ConversationUtil {
     static {
         CONVERSATION_HISTORY = new ConversationHistory();
         CONVERSATION_HISTORY.setMessageEntries(new ArrayList<>());
+    }
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try (ServerSocket serverSocket = new ServerSocket(CONVERSATION_PORT)) {
-                    while (true) {
-                        Socket clientSocket = serverSocket.accept();
-                        BufferedReader in = new BufferedReader(
-                                new InputStreamReader(clientSocket.getInputStream()));
-                        MessageEntry messageEntry = new ObjectMapper().readValue(in.readLine(), MessageEntry.class);
+    public static void startConversationReceiver() {
+        new Thread(() -> {
+            try (ServerSocket serverSocket = new ServerSocket(CONVERSATION_PORT)) {
+                while (true) {
+                    Socket clientSocket = serverSocket.accept();
+                    BufferedReader in = new BufferedReader(
+                            new InputStreamReader(clientSocket.getInputStream()));
+                    MessageEntryDTO messageEntryDTO = new ObjectMapper().readValue(in.readLine(), MessageEntryDTO.class);
 
-                        if (!CONVERSATION_HISTORY.getMessageEntries().contains(messageEntry)) {
-                            CONVERSATION_HISTORY.getMessageEntries().add(messageEntry);
-                        } else {
-                            System.out.println("Avem deja");
+                    RSAPublicKeySpec rsaPublicKeySpec = null;
+                    PaginatedQueryList<PublicKeyEntry> query = DynamoDBUtil.getDynamoDBMapper().query(PublicKeyEntry.class, new DynamoDBQueryExpression<>());
+                    for (Iterator<PublicKeyEntry> it = query.iterator(); it.hasNext(); ) {
+                        PublicKeyEntry publicKeyEntry = it.next();
+
+                        if (Objects.equals(publicKeyEntry.getUsername(), messageEntryDTO.getSender())) {
+                            String[] split = publicKeyEntry.getPublicKey().split("|");
+                            rsaPublicKeySpec = new RSAPublicKeySpec(new BigInteger(split[0]), new BigInteger(split[1]));
                         }
-
-                        System.out.println(messageEntry);
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
+
+                    KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+                    PublicKey publicKey = keyFactory.generatePublic(rsaPublicKeySpec);
+
+                    Cipher c = Cipher.getInstance("RSA");
+                    c.init(Cipher.DECRYPT_MODE, publicKey);
+
+                    String message = (String) messageEntryDTO.getEncryptedMessage().getObject(c);
+
+                    MessageEntry messageEntry = new MessageEntry();
+                    messageEntry.setReceiver(messageEntryDTO.getReceiver());
+                    messageEntry.setSender(messageEntryDTO.getSender());
+                    messageEntry.setDate(messageEntryDTO.getDate());
+                    messageEntry.setMessage(message);
+
+                    if (!CONVERSATION_HISTORY.getMessageEntries().contains(messageEntry)) {
+                        CONVERSATION_HISTORY.getMessageEntries().add(messageEntry);
+                    } else {
+                        System.out.println("Avem deja");
+                    }
+
+                    System.out.println(messageEntry);
                 }
+            } catch (IOException | NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException | ClassNotFoundException e) {
+                e.printStackTrace();
             }
         }).start();
     }

@@ -25,9 +25,7 @@ import com.example.andrluc.securemessaging.utils.ConversationUtil;
 import com.example.andrluc.securemessaging.utils.DynamoDBUtil;
 
 import java.io.IOException;
-import java.net.Inet4Address;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -49,6 +47,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        ConversationUtil.startConversationReceiver(this);
 
         ConversationUtil.loadConversationFromFile(this);
 
@@ -131,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void publishToDDBPublicKeyOnce() {
         SharedPreferences wmbPreference = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean isFirstRun = wmbPreference.getBoolean("firstGo", true);
+        boolean isFirstRun = wmbPreference.getBoolean("firstGoing", true);
         if (isFirstRun)
         {
             try {
@@ -142,17 +142,10 @@ public class MainActivity extends AppCompatActivity {
                 RSAPublicKey publicKey = (RSAPublicKey)kp.getPublic();
                 final String publicKeyString = publicKey.getModulus().toString() + "|" + publicKey.getPublicExponent().toString();
 
-
-
                 new Thread(() -> {
                     final PublicKeyEntry publicKeyEntry = new PublicKeyEntry();
 
-                    try {
-                        publicKeyEntry.setUsername(Inet4Address.getLocalHost().getHostAddress());
-                    } catch (UnknownHostException e) {
-                        e.printStackTrace();
-                    }
-
+                    publicKeyEntry.setUsername(this.ipAddress);
                     publicKeyEntry.setPublicKey(publicKeyString);
 
 
@@ -160,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
                 }).start();
 
                 SharedPreferences.Editor editor = wmbPreference.edit();
-                editor.putBoolean("firstGo", false);
+                editor.putBoolean("firstGoing", false);
                 RSAPrivateKey privateKey = (RSAPrivateKey)kp.getPrivate();
                 editor.putString("privateKey", privateKey.getModulus().toString() + "|" + privateKey.getPrivateExponent().toString());
                 editor.apply();

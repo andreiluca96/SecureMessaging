@@ -1,6 +1,8 @@
 package com.example.andrluc.securemessaging;
 
+import android.content.SharedPreferences;
 import android.os.Build;
+import android.preference.PreferenceManager;
 import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -14,13 +16,21 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.example.andrluc.securemessaging.model.MessageEntry;
+import com.example.andrluc.securemessaging.model.MessageEntryDTO;
 import com.example.andrluc.securemessaging.utils.ConversationUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.net.Socket;
+import java.security.InvalidKeyException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPrivateKeySpec;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -28,6 +38,11 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SealedObject;
 
 public class ConversationActivity extends AppCompatActivity {
     private final int CONVERSATION_PORT = 12345;
@@ -90,7 +105,6 @@ public class ConversationActivity extends AppCompatActivity {
                 MessageListAdapter messageListAdapter1 = new MessageListAdapter(messages);
                 System.out.println("Adaptam...");
 
-
                 runOnUiThread(() -> {
                     recyclerView.swapAdapter(messageListAdapter1, false);
                     recyclerView.smoothScrollToPosition(messages.size() - 1);
@@ -101,49 +115,62 @@ public class ConversationActivity extends AppCompatActivity {
 
         }, 0, 10, TimeUnit.SECONDS);
 
-        Message dummy = new Message();
-        dummy.setCreatedAt(new Date());
-        dummy.setMessage("MESSAGEEEEE");
-        dummy.setSender("John Doe");
-
-        messages.add(dummy);
-
-        Message dummy2 = new Message();
-        dummy2.setCreatedAt(new Date());
-        dummy2.setMessage("MESSAGEEEEE");
-        dummy2.setSender("John Doe");
-
-        messages.add(dummy2);
-
         messageListAdapter = new MessageListAdapter(messages);
         recyclerView.swapAdapter(messageListAdapter, false);
     }
 
     public void sendMessage(View view) {
         new Thread(() -> {
-            MessageEntry messageEntry = new MessageEntry();
             EditText editText = findViewById(R.id.edittext_chatbox);
             String message = editText.getText().toString();
 
             runOnUiThread(() -> editText.setText(""));
 
+            Date date = new Date();
+
+            MessageEntry messageEntry = new MessageEntry();
             messageEntry.setSender(selfIPAddress);
             messageEntry.setReceiver(hostIPAddress);
-            messageEntry.setDate(new Date());
+            messageEntry.setDate(date);
             messageEntry.setMessage(message);
-
             ConversationUtil.getConversationHistory().getMessageEntries().add(messageEntry);
 
+            SharedPreferences wmbPreference = PreferenceManager.getDefaultSharedPreferences(this);
+            String privateKeyString= wmbPreference.getString("privateKey", null);
+            assert privateKeyString != null;
+            String[] split = privateKeyString.split("|");
+
+            BigInteger modulus = new BigInteger(split[0]);
+            BigInteger exponent = new BigInteger(split[1]);
+
             try {
+                KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+                RSAPrivateKeySpec rsaPrivateKeySpec = new RSAPrivateKeySpec(modulus, exponent);
+                PrivateKey privateKey = keyFactory.generatePrivate(rsaPrivateKeySpec);
+
+                Cipher c = Cipher.getInstance("RSA");
+                c.init(Cipher.ENCRYPT_MODE, privateKey);
+
+                SealedObject myEncryptedMessage = new SealedObject(message, c);
+
+                MessageEntryDTO messageEntryDTO = new MessageEntryDTO();
+                messageEntryDTO.setSender(selfIPAddress);
+                messageEntryDTO.setReceiver(hostIPAddress);
+                messageEntryDTO.setDate(date);
+                messageEntryDTO.setEncryptedMessage(myEncryptedMessage);
+
                 Socket socket = new Socket(hostIPAddress, CONVERSATION_PORT);
                 OutputStream outputStream = socket.getOutputStream();
 
                 PrintWriter writer = new PrintWriter(outputStream, true);
 
                 writer.println(new ObjectMapper().writeValueAsString(messageEntry));
-            } catch (IOException e) {
+            } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException | IOException | IllegalBlockSizeException e) {
                 e.printStackTrace();
             }
+
+
+
 
         }).start();
     }
