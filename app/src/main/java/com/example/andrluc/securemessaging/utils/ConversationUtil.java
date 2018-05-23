@@ -60,11 +60,9 @@ public class ConversationUtil {
 
                     RSAPublicKeySpec rsaPublicKeySpec = null;
                     PaginatedQueryList<PublicKeyEntry> query = DynamoDBUtil.getDynamoDBMapper().query(PublicKeyEntry.class, new DynamoDBQueryExpression<>());
-                    for (Iterator<PublicKeyEntry> it = query.iterator(); it.hasNext(); ) {
-                        PublicKeyEntry publicKeyEntry = it.next();
-
+                    for (PublicKeyEntry publicKeyEntry : query) {
                         if (Objects.equals(publicKeyEntry.getUsername(), messageEntryDTO.getSender())) {
-                            String[] split = publicKeyEntry.getPublicKey().split("|");
+                            String[] split = publicKeyEntry.getPublicKey().split("\\|");
                             rsaPublicKeySpec = new RSAPublicKeySpec(new BigInteger(split[0]), new BigInteger(split[1]));
                         }
                     }
@@ -72,10 +70,7 @@ public class ConversationUtil {
                     KeyFactory keyFactory = KeyFactory.getInstance("RSA");
                     PublicKey publicKey = keyFactory.generatePublic(rsaPublicKeySpec);
 
-                    Cipher c = Cipher.getInstance("RSA");
-                    c.init(Cipher.DECRYPT_MODE, publicKey);
-
-                    String message = (String) messageEntryDTO.getEncryptedMessage().getObject(c);
+                    String message = new String(CryptoUtil.decrypt(publicKey, messageEntryDTO.getEncryptedMessage().getBytes()));
 
                     MessageEntry messageEntry = new MessageEntry();
                     messageEntry.setReceiver(messageEntryDTO.getReceiver());
@@ -91,7 +86,7 @@ public class ConversationUtil {
 
                     System.out.println(messageEntry);
                 }
-            } catch (IOException | NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException | ClassNotFoundException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }).start();

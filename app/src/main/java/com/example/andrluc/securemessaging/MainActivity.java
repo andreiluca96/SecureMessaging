@@ -36,7 +36,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-    public static final String SUBNET_MASK = "192.168.1";
+    public static final String SUBNET_MASK = "192.168.100";
 
     private final List<String> users = new ArrayList<>();
     private final List<ContactItem> contactsLists = new ArrayList<>();
@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ConversationUtil.startConversationReceiver(this);
+        ConversationUtil.startConversationReceiver();
 
         ConversationUtil.loadConversationFromFile(this);
 

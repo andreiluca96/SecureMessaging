@@ -5,16 +5,16 @@ import java.util.Date;
 import javax.crypto.SealedObject;
 
 public class MessageEntryDTO {
-    private SealedObject encryptedMessage;
+    private String encryptedMessage;
     private String sender;
     private String receiver;
     private Date date;
 
-    public SealedObject getEncryptedMessage() {
+    public String getEncryptedMessage() {
         return encryptedMessage;
     }
 
-    public void setEncryptedMessage(SealedObject encryptedMessage) {
+    public void setEncryptedMessage(String encryptedMessage) {
         this.encryptedMessage = encryptedMessage;
     }
 
