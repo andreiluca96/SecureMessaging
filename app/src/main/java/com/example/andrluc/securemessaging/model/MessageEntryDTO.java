@@ -2,19 +2,35 @@ package com.example.andrluc.securemessaging.model;
 
 import java.util.Date;
 
-import javax.crypto.SealedObject;
-
 public class MessageEntryDTO {
-    private String encryptedMessage;
+    private byte[] encryptionKey;
+    private byte[] iv;
+    private byte[] encryptedMessage;
     private String sender;
     private String receiver;
     private Date date;
 
-    public String getEncryptedMessage() {
+    public byte[] getIv() {
+        return iv;
+    }
+
+    public void setIv(byte[] iv) {
+        this.iv = iv;
+    }
+
+    public byte[] getEncryptionKey() {
+        return encryptionKey;
+    }
+
+    public void setEncryptionKey(byte[] encryptionKey) {
+        this.encryptionKey = encryptionKey;
+    }
+
+    public byte[] getEncryptedMessage() {
         return encryptedMessage;
     }
 
-    public void setEncryptedMessage(String encryptedMessage) {
+    public void setEncryptedMessage(byte[] encryptedMessage) {
         this.encryptedMessage = encryptedMessage;
     }
 

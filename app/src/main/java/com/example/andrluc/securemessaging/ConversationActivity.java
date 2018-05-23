@@ -33,6 +33,7 @@ import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPrivateKeySpec;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -42,8 +43,11 @@ import java.util.concurrent.TimeUnit;
 
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SealedObject;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 
 public class ConversationActivity extends AppCompatActivity {
     private final int CONVERSATION_PORT = 12345;
@@ -149,11 +153,22 @@ public class ConversationActivity extends AppCompatActivity {
                 RSAPrivateKeySpec rsaPrivateKeySpec = new RSAPrivateKeySpec(modulus, exponent);
                 PrivateKey privateKey = keyFactory.generatePrivate(rsaPrivateKeySpec);
 
+                KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+                keyGen.init(256); // for example
+                SecretKey secretKey = keyGen.generateKey();
+
+                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+                cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+                IvParameterSpec spec = cipher.getParameters().getParameterSpec(IvParameterSpec.class);
+                byte[] iv = spec.getIV();
+
                 MessageEntryDTO messageEntryDTO = new MessageEntryDTO();
                 messageEntryDTO.setSender(selfIPAddress);
                 messageEntryDTO.setReceiver(hostIPAddress);
                 messageEntryDTO.setDate(date);
-                messageEntryDTO.setEncryptedMessage(new String(CryptoUtil.encrypt(privateKey, message)));
+                messageEntryDTO.setIv(iv);
+                messageEntryDTO.setEncryptionKey(CryptoUtil.encrypt(privateKey, secretKey.getEncoded()));
+                messageEntryDTO.setEncryptedMessage(cipher.doFinal(message.getBytes()));
 
                 Socket socket = new Socket(hostIPAddress, CONVERSATION_PORT);
                 OutputStream outputStream = socket.getOutputStream();

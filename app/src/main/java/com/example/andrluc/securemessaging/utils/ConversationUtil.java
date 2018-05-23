@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 
 import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBQueryExpression;
+import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBScanExpression;
+import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.PaginatedList;
 import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.PaginatedQueryList;
 import com.example.andrluc.securemessaging.model.ConversationHistory;
 import com.example.andrluc.securemessaging.model.MessageEntry;
@@ -36,6 +38,8 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class ConversationUtil {
     private static final int CONVERSATION_PORT = 12345;
@@ -59,7 +63,7 @@ public class ConversationUtil {
                     MessageEntryDTO messageEntryDTO = new ObjectMapper().readValue(in.readLine(), MessageEntryDTO.class);
 
                     RSAPublicKeySpec rsaPublicKeySpec = null;
-                    PaginatedQueryList<PublicKeyEntry> query = DynamoDBUtil.getDynamoDBMapper().query(PublicKeyEntry.class, new DynamoDBQueryExpression<>());
+                    PaginatedList<PublicKeyEntry> query = DynamoDBUtil.getDynamoDBMapper().scan(PublicKeyEntry.class, new DynamoDBScanExpression());
                     for (PublicKeyEntry publicKeyEntry : query) {
                         if (Objects.equals(publicKeyEntry.getUsername(), messageEntryDTO.getSender())) {
                             String[] split = publicKeyEntry.getPublicKey().split("\\|");
@@ -70,7 +74,13 @@ public class ConversationUtil {
                     KeyFactory keyFactory = KeyFactory.getInstance("RSA");
                     PublicKey publicKey = keyFactory.generatePublic(rsaPublicKeySpec);
 
-                    String message = new String(CryptoUtil.decrypt(publicKey, messageEntryDTO.getEncryptedMessage().getBytes()));
+                    IvParameterSpec iv = new IvParameterSpec(messageEntryDTO.getIv());
+                    SecretKeySpec skeySpec = new SecretKeySpec(CryptoUtil.decrypt(publicKey, messageEntryDTO.getEncryptionKey()), "AES");
+
+                    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+                    cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
+
+                    String message = new String(cipher.doFinal(messageEntryDTO.getEncryptedMessage()));
 
                     MessageEntry messageEntry = new MessageEntry();
                     messageEntry.setReceiver(messageEntryDTO.getReceiver());

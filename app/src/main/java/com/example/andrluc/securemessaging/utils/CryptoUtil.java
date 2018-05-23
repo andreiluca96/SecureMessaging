@@ -6,11 +6,11 @@ import java.security.PublicKey;
 import javax.crypto.Cipher;
 
 public class CryptoUtil {
-    public static byte[] encrypt(PrivateKey privateKey, String message) throws Exception {
+    public static byte[] encrypt(PrivateKey privateKey, byte[] message) throws Exception {
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.ENCRYPT_MODE, privateKey);
 
-        return cipher.doFinal(message.getBytes());
+        return cipher.doFinal(message);
     }
 
     public static byte[] decrypt(PublicKey publicKey, byte [] encrypted) throws Exception {
