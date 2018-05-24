@@ -131,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void publishToDDBPublicKeyOnce() {
         SharedPreferences wmbPreference = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean isFirstRun = wmbPreference.getBoolean("firstGoing", true);
+        boolean isFirstRun = wmbPreference.getBoolean(ipAddress, true);
         if (isFirstRun)
         {
             try {
@@ -153,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
                 }).start();
 
                 SharedPreferences.Editor editor = wmbPreference.edit();
-                editor.putBoolean("firstGoing", false);
+                editor.putBoolean(ipAddress, false);
                 RSAPrivateKey privateKey = (RSAPrivateKey)kp.getPrivate();
                 editor.putString("privateKey", privateKey.getModulus().toString() + "|" + privateKey.getPrivateExponent().toString());
                 editor.apply();

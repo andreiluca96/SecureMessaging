@@ -21,19 +21,14 @@ import com.example.andrluc.securemessaging.utils.ConversationUtil;
 import com.example.andrluc.securemessaging.utils.CryptoUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.net.Socket;
-import java.security.InvalidKeyException;
 import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPrivateKeySpec;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -42,10 +37,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SealedObject;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 
@@ -81,7 +73,7 @@ public class ConversationActivity extends AppCompatActivity {
                 List<MessageEntry> filteredMessageEntries = new ArrayList<>();
 
                 for (MessageEntry messageEntry : messageEntries) {
-                    if (messageEntry.getSender().equals(hostIPAddress) || messageEntry.getSender().equals(hostIPAddress)) {
+                    if (messageEntry.getSender().equals(hostIPAddress) || messageEntry.getReceiver().equals(hostIPAddress)) {
                         filteredMessageEntries.add(messageEntry);
                     }
                 }
@@ -107,6 +99,8 @@ public class ConversationActivity extends AppCompatActivity {
                     messages.add(message);
                 }
 
+                System.out.println(messages);
+                System.out.println(ConversationUtil.getConversationHistory().getMessageEntries());
                 MessageListAdapter messageListAdapter1 = new MessageListAdapter(messages);
                 System.out.println("Adaptam...");
 
@@ -138,6 +132,7 @@ public class ConversationActivity extends AppCompatActivity {
             messageEntry.setReceiver(hostIPAddress);
             messageEntry.setDate(date);
             messageEntry.setMessage(message);
+
             ConversationUtil.getConversationHistory().getMessageEntries().add(messageEntry);
 
             SharedPreferences wmbPreference = PreferenceManager.getDefaultSharedPreferences(this);
@@ -147,7 +142,6 @@ public class ConversationActivity extends AppCompatActivity {
 
             BigInteger modulus = new BigInteger(split[0]);
             BigInteger exponent = new BigInteger(split[1]);
-
             try {
                 KeyFactory keyFactory = KeyFactory.getInstance("RSA");
                 RSAPrivateKeySpec rsaPrivateKeySpec = new RSAPrivateKeySpec(modulus, exponent);
@@ -179,6 +173,7 @@ public class ConversationActivity extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
         }).start();
     }
 
